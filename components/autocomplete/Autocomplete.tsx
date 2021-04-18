@@ -169,6 +169,7 @@ const Autocomplete = ({
   const [query, setQuery] = useState('')
   const [originalQuery, setOriginalQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const [hoverIndex, setHoverIndex] = useState(null)
   const debouncedQuery = useDebounce(originalQuery, defaultDebounceTime)
 
   const onInputChange = (event) => {
@@ -178,11 +179,11 @@ const Autocomplete = ({
     setOriginalQuery(value)
   }
 
-  const onHoverEnter = (item, index) => {
-    setSelectedIndex(index)
+  const onHoverEnter = (_, index) => {
+    setHoverIndex(index)
   }
-  const onHoverLeave = (item, index) => {
-    setSelectedIndex(null)
+  const onHoverLeave = (_, index) => {
+    setHoverIndex(null)
   }
 
   useEffect(() => {
@@ -190,15 +191,14 @@ const Autocomplete = ({
       if (!ARROW_KEYS.includes(event.keyCode)) {
         return
       }
-      console.log(event)
-      setSelectedIndex(
-        selectedIndex === null
-          ? 0
-          : selectedByMaxLen(
+
+      const newIndex = selectedIndex === null
+        ? 0
+        : selectedByMaxLen(
             selectedByKeyPressed(selectedIndex, event.keyCode),
-              resultItems.length - 1
-            )
-      )
+            resultItems.length - 1
+          )
+      setSelectedIndex(newIndex)
     }
     document.addEventListener('keydown', handleKeyDown)
 
@@ -214,9 +214,16 @@ const Autocomplete = ({
     }
   }, [debouncedQuery])
 
-  const inputValue = selectedIndex !== null
-    ? resultItems && resultItems[selectedIndex]&& resultItems[selectedIndex].value
-    : originalQuery
+  let inputValue = originalQuery
+
+  if (hoverIndex !== null) {
+    inputValue = resultItems && resultItems[hoverIndex]&& resultItems[hoverIndex].value
+  }
+
+  if (hoverIndex === null && selectedIndex !== null) {
+    inputValue = resultItems && resultItems[selectedIndex]&& resultItems[selectedIndex].value
+  }
+
   return (
     <div>
       <label htmlFor='query'>{label}</label>
