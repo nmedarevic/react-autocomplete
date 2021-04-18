@@ -1,5 +1,6 @@
 import Head from 'next/head'
 import { useEffect, useState } from 'react'
+import styled from 'styled-components'
 import Autocomplete from '../components/autocomplete/Autocomplete'
 import styles from '../styles/Home.module.css'
 const data = [
@@ -119,9 +120,33 @@ const data = [
   "Tomato",
   "Zucchini"
 ].map((a, index) => ({id: index, value: a}))
+
+const SelectedItemContainer = styled.div`
+  margin: 5px;
+  padding: 5px;
+  display: flex;
+  flex-direction: row;
+
+  > div {
+    display: inline;
+  }
+
+  div:nth-child(2) {
+    margin-left: 5px;
+    cursor: pointer;
+  }
+`
+const SelectedItem = ({item, onRemove}) => (
+  <SelectedItemContainer>
+    <div>{item.value}</div>
+    <div onClick={() => onRemove(item)}>{'x'}</div>
+  </SelectedItemContainer>
+)
+
 export default function Home() {
   const [changedValue, onChangeValue] = useState('Create Next App')
   const [results, setResults] = useState([])
+  const [selection, setSelected] = useState([])
   const onChange = (value) => {
     console.log(value)
     onChangeValue(value)
@@ -131,6 +156,15 @@ export default function Home() {
     const lowercaseValue = changedValue.toLowerCase()
     setResults(data.filter(({value}) => value.toLowerCase().includes(lowercaseValue)))
   }, [changedValue])
+
+  const onSelect = (item) => {
+    console.log(item)
+    setSelected([...selection, item])
+  }
+
+  const onRemoveSelection = (item) => {
+    setSelected(selection.filter(({id}) => item.id !== id))
+  }
 
   return (
     <div className={styles.container}>
@@ -149,9 +183,13 @@ export default function Home() {
           <code className={styles.code}>pages/index.js</code>
         </p>
 
+        <p>
+          {selection.map((item) => <SelectedItem item={item} onRemove={onRemoveSelection}/>)}
+        </p>
+
         <div className={styles.grid}>
 
-          <Autocomplete resultItems={results} onChange={onChange} />
+          <Autocomplete onSelect={onSelect} resultItems={results} onChange={onChange} />
         </div>
       </main>
 
