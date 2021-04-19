@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react"
 import useDebounce from "../../hooks/useDebounce"
 import styled from 'styled-components'
+
 export const defaultPlaceholder = 'Type something here'
 export const defaultLabel = 'Find something'
 export const defaultDebounceTime = 300
 export const noop = () => {}
 export const asyncNoop = async () => {}
+export const UP_KEY = 38
+export const DOWN_KEY = 40
+export const ARROW_KEYS = [UP_KEY, DOWN_KEY]
 
 type ResultItem = {
   id: string;
@@ -41,7 +45,7 @@ const RenderStringItem = styled.li`
       return `
         pointer-events: none;
         cursor: not-allowed;
-        background-color: #121212;
+        background-color: #f1f1f1;
       `
     }
   }}
@@ -71,12 +75,13 @@ export const RenderString = ({
   isDisabled = false
 }: RenderStringProps) => (
   <RenderStringItem
-    data-testid={item.id}
+    data-testid={`${item.id}${isDisabled ? 'disabled' : ''}${isActive ? 'active' : ''}`}
     onClick={() => {onSelect(item)}}
     onMouseEnter={() => {onHoverEnter(item, index)}}
     onMouseLeave={() => {onHoverLeave(item, index)}}
     isActive={isActive}
     isDisabled={isDisabled}
+    className={isDisabled ? 'disabled' : ''}
   >
     {item.value}
   </RenderStringItem>
@@ -150,12 +155,11 @@ const ResultList = ({
 const defaultOnSelect = ({id, value}: ResultItem) => {
   return null
 }
+
 const ListContainer = styled.div`
   position: relative;
 `
-const UP_KEY = 38
-const DOWN_KEY = 40
-const ARROW_KEYS = [UP_KEY, DOWN_KEY]
+
 
 const selectedByKeyPressed = (value, keyCode) => {
   if (keyCode === DOWN_KEY) {
@@ -214,7 +218,7 @@ const Autocomplete = ({
   const onHoverEnter = (_, index) => {
     setArrowKeySelectIndex(index)
   }
-  const onHoverLeave = (_, index) => {
+  const onHoverLeave = (_, __) => {
     setArrowKeySelectIndex(null)
   }
 
