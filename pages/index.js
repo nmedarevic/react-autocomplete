@@ -144,7 +144,7 @@ const SelectedItem = ({item, onRemove}) => (
 )
 
 export default function Home() {
-  const [changedValue, onChangeValue] = useState('Create Next App')
+  const [changedValue, onChangeValue] = useState('Type in a name of a fruit')
   const [results, setResults] = useState([])
   const [selection, setSelected] = useState([])
   const onChange = (value) => {
@@ -158,7 +158,6 @@ export default function Home() {
   }, [changedValue])
 
   const onSelect = (item) => {
-    console.log(item)
     setSelected([...selection, item])
   }
 
@@ -168,40 +167,31 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <Head>
-        <title>{changedValue}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
       <main className={styles.main}>
         <h1 className={styles.title}>
           {changedValue}
         </h1>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
         <p>
-          {selection.map((item) => <SelectedItem item={item} onRemove={onRemoveSelection}/>)}
+          {selection.map(
+            (item) => <SelectedItem
+              item={item}
+              onRemove={onRemoveSelection}
+            />
+          )}
         </p>
 
         <div className={styles.grid}>
-
-          <Autocomplete onSelect={onSelect} resultItems={results} onChange={onChange} />
+          <Autocomplete
+            onSelect={onSelect}
+            resultItems={results}
+            onChange={onChange}
+            selectedItems={selection}
+          />
         </div>
       </main>
 
       <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
       </footer>
     </div>
   )

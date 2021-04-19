@@ -18,6 +18,7 @@ interface AutocompleteProps {
   placeholder?: string;
   label?: string;
   resultItems?: ResultItem[];
+  selectedItems?: ResultItem[];
   ResultItemRenderer?: Function;
   onChange: Function;
   onSelect: OnSelectFunction;
@@ -27,11 +28,20 @@ const RenderStringItem = styled.li`
   padding: 5px;
   cursor: pointer;
 
-  ${({isSelected}) => {
-    console.log(isSelected)
-    if (isSelected) {
+  ${({isActive}) => {
+    if (isActive) {
       return `
         background-color: #e2e2e2;
+      `
+    }
+  }}
+
+  ${({isDisabled}) => {
+    if (isDisabled) {
+      return `
+        pointer-events: none;
+        cursor: not-allowed;
+        background-color: #121212;
       `
     }
   }}
@@ -45,7 +55,8 @@ interface RenderStringProps {
   item: ResultItem;
   onSelect: Function;
   onHover: Function;
-  isSelected: boolean;
+  isActive: boolean;
+  isDisabled: boolean;
   index: number;
   onHoverEnter: Function;
   onHoverLeave: Function;
@@ -55,26 +66,29 @@ export const RenderString = ({
   onSelect,
   onHoverEnter,
   onHoverLeave,
-  isSelected = false,
-  index
+  isActive = false,
+  index,
+  isDisabled = false
 }: RenderStringProps) => (
   <RenderStringItem
     data-testid={item.id}
     onClick={() => {onSelect(item)}}
     onMouseEnter={() => {onHoverEnter(item, index)}}
     onMouseLeave={() => {onHoverLeave(item, index)}}
-    isSelected={isSelected}
+    isActive={isActive}
+    isDisabled={isDisabled}
   >
     {item.value}
   </RenderStringItem>
 )
 interface ResultListProps {
   resultItems?: ResultItem[];
+  selectedItems?: ResultItem[];
   ResultItemRenderer?: Function;
   onSelect?: Function;
   onHoverEnter?: Function;
   onHoverLeave?: Function;
-  selectedIndex?: number;
+  hoverIndex?: number;
 }
 const ResultListContainer = styled.ul`
   position: absolute;
@@ -98,11 +112,12 @@ const ResultListContainer = styled.ul`
 `
 const ResultList = ({
   resultItems = [],
+  selectedItems = [],
   ResultItemRenderer = RenderString,
-  onSelect = () => {},
-  onHoverEnter = () => {},
-  onHoverLeave = () => {},
-  selectedIndex
+  onSelect = noop,
+  onHoverEnter = noop,
+  onHoverLeave = noop,
+  hoverIndex
 }: ResultListProps) => {
   if (resultItems.length === 0) {
     return null
@@ -110,17 +125,24 @@ const ResultList = ({
 
   return (
     <ResultListContainer data-testid='result-list'>
-      {resultItems.map((item: ResultItem, index: number) => (
-        <ResultItemRenderer
-          key={item.id}
-          item={item}
-          isSelected={index === selectedIndex}
-          index={index}
-          onSelect={onSelect}
-          onHoverEnter={onHoverEnter}
-          onHoverLeave={onHoverLeave}
-        />
-      ))}
+      {resultItems.map((item: ResultItem, index: number) => {
+
+        const isSelected = selectedItems.find(({id}) => id === item.id)
+        const isActive = index === hoverIndex
+
+        return (
+          <ResultItemRenderer
+            key={item.id}
+            item={item}
+            isActive={isActive}
+            index={index}
+            onSelect={onSelect}
+            onHoverEnter={onHoverEnter}
+            onHoverLeave={onHoverLeave}
+            isDisabled={isSelected}
+          />
+        )
+      })}
     </ResultListContainer>
   )
 }
@@ -158,32 +180,42 @@ const selectedByMaxLen = (value, maxValue) => {
   return value
 }
 
+const getNextSelectedIndex = (currentIndex, results, keyCode) => {
+  if (currentIndex === null) {
+    return 0
+  }
+
+  return selectedByMaxLen(
+    selectedByKeyPressed(currentIndex, keyCode),
+    results.length - 1
+  )
+}
+
 const Autocomplete = ({
   placeholder = defaultPlaceholder,
   label = defaultLabel,
   resultItems = [],
+  selectedItems = [],
   ResultItemRenderer = RenderString,
   onChange = asyncNoop,
   onSelect = defaultOnSelect
 }: AutocompleteProps) => {
-  const [query, setQuery] = useState('')
   const [originalQuery, setOriginalQuery] = useState('')
-  const [selectedIndex, setSelectedIndex] = useState(null)
   const [hoverIndex, setHoverIndex] = useState(null)
+  const [arrowKeySelectIndex, setArrowKeySelectIndex] = useState(null)
   const debouncedQuery = useDebounce(originalQuery, defaultDebounceTime)
 
   const onInputChange = (event) => {
     const value = event.target.value
 
-    setQuery(value)
     setOriginalQuery(value)
   }
 
   const onHoverEnter = (_, index) => {
-    setHoverIndex(index)
+    setArrowKeySelectIndex(index)
   }
   const onHoverLeave = (_, index) => {
-    setHoverIndex(null)
+    setArrowKeySelectIndex(null)
   }
 
   useEffect(() => {
@@ -192,23 +224,19 @@ const Autocomplete = ({
         return
       }
 
-      const newIndex = selectedIndex === null
-        ? 0
-        : selectedByMaxLen(
-            selectedByKeyPressed(selectedIndex, event.keyCode),
-            resultItems.length - 1
-          )
-      setSelectedIndex(newIndex)
+      setHoverIndex(
+        getNextSelectedIndex(hoverIndex, resultItems, event.keyCode)
+      )
     }
+
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selectedIndex])
+  }, [hoverIndex])
 
   useEffect(() => {
-    console.log('effect', debouncedQuery)
     if (debouncedQuery && debouncedQuery.length >= 3) {
       onChange(debouncedQuery)
     }
@@ -216,12 +244,12 @@ const Autocomplete = ({
 
   let inputValue = originalQuery
 
-  if (hoverIndex !== null) {
-    inputValue = resultItems && resultItems[hoverIndex]&& resultItems[hoverIndex].value
+  if (arrowKeySelectIndex !== null) {
+    inputValue = resultItems && resultItems[arrowKeySelectIndex] && resultItems[arrowKeySelectIndex].value
   }
 
-  if (hoverIndex === null && selectedIndex !== null) {
-    inputValue = resultItems && resultItems[selectedIndex]&& resultItems[selectedIndex].value
+  if (arrowKeySelectIndex === null && hoverIndex !== null) {
+    inputValue = resultItems && resultItems[hoverIndex]&& resultItems[hoverIndex].value
   }
 
   return (
@@ -239,9 +267,10 @@ const Autocomplete = ({
       <ListContainer>
         <ResultList
           resultItems={resultItems}
+          selectedItems={selectedItems}
           ResultItemRenderer={ResultItemRenderer}
           onSelect={onSelect}
-          selectedIndex={selectedIndex}
+          hoverIndex={hoverIndex}
           onHoverEnter={onHoverEnter}
           onHoverLeave={onHoverLeave}
         />
